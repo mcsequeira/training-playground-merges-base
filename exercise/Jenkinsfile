@@ -1,24 +1,48 @@
 pipeline {
-	agent {
-			//TODO add agent from dockerfile
-		}
+	dockerfile {
+        filename 'Dockerfile'
+        dir 'exercise'
+	}
   	}
   	
   	options { 
-  		//TODO add option to avoid concurrent builds
+  		// avoid concurrent builds
+  		disableConcurrentBuilds()
 	}
 
 
 	environment {
-		CONFIGS = '{JSON_TREE_OBJECT}' //TODO create json tree object
+		CONFIGS = '{ 																						\
+			"repositoryConfigs":[																			\
+				{																							\
+					"name":"repo1",																			\
+					"urlWithoutProtocol":"github.com/mcsequeira/training-playground-merges-repo1.git",		\
+					"credentialId":"CREDENTIAL_ID_NB25342"													\
+				},																							\
+				{																							\
+					"name":"repo2",																			\
+					"urlWithoutProtocol":"github.com/mcsequeira/training-playground-merges-repo1.git",		\
+					"credentialId":"CREDENTIAL_ID_NB25342"													\
+				}																							\
+			], 																								\
+			"mergeConfigs":[																				\
+				{ 																							\
+					"sourceRepository":"repo1",																\
+					"targetRepository":"repo2", 															\
+					"oneToOneMapping":"main:main", 															\
+					"oneToManyMapping":"", 																	\
+					"manyToManyMapping":"" 																	\
+				} 																							\
+			] 																								\
+		}' // create json tree object
 		
-		SEND_SUCCESS_EMAIL_TO = 'EMAIL'	//TODO EMAIL
+		SEND_SUCCESS_EMAIL_TO = 'mariana.sequeira@celfocus.com'	//TODO EMAIL
 		SEND_SUCCESS_EMAIL_SUBJECT = 'Automatic merge results report'
-		SEND_SUCCESS_EMAIL_TEMPLATE_PATH = 'PATH_TO_success.html' //TODO PATH_TO
+		SEND_SUCCESS_EMAIL_TEMPLATE_PATH = 'exercise/email-templates/success.html' //TODO PATH_TO
 
-		SEND_MAINTENANCE_EMAIL_TO = 'EMAIL'	//TODO EMAIL
+		SEND_MAINTENANCE_EMAIL_TO = 'mariana.sequeira@celfocus.com'	//TODO EMAIL
 		SEND_MAINTENANCE_EMAIL_SUBJECT = 'Automatic merge results maintenance'
-		SEND_MAINTENANCE_EMAIL_TEMPLATE_PATH = 'PATH_TO_maintenance.html' //TODO PATH_TO
+		SEND_MAINTENANCE_EMAIL_TEMPLATE_PATH = 'exercise/email-templates/maintenance.html' //TODO PATH_TO
   	}
 
   	stages {
@@ -26,10 +50,21 @@ pipeline {
       		steps { 
       			script {
       				//TODO Store initial state in init branch, if not exists create refs/heads/init - use - show-ref --quiet
+      				sh "if git show-ref --quiet refs/heads/init; then git branch -D init; fi"
+      				sh "git checkout -b init"
+
 					// TODO use readJSON to read CONFIGS to a local variable
+					def buildConfigs = readJSON text: "$CONFIGS"
+
 					// for each repositoryConfig object call setupRemote method with defined parameters already implemented
+					buildConfigs.repositoryConfigs.each{ repoConfig -> 
+						withCredentials([[$class: 'UsernamePasswordMultiBinding', credentialsId: repoConfig.credentialId, usernameVariable: 'GIT_USERNAME', passwordVariable: 'GIT_PASSWORD']]){
+							setupRemote(repoConfig.name, repoConfig.urlWithoutProtocol, env.GIT_USERNAME, env.GIT_PASSWORD)
+						}
+						
+					}
 					// use withCredentials to get password and user from jenkins
-					    }
+					}
       		}
     	}
     	stage('Perform Merges') {
@@ -52,6 +87,7 @@ pipeline {
       		}
     	}
   	}
+  	/*
 	post { 
         success { 
   			script {
@@ -71,6 +107,7 @@ pipeline {
 		    //TODO call maintenance email
 		}
     }
+    */
 }
 
 /*****************************************
