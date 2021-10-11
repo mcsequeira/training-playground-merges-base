@@ -3,7 +3,6 @@ pipeline {
         filename 'Dockerfile'
         dir 'exercise'
 	}
-  	}
   	
   	options { 
   		// avoid concurrent builds
