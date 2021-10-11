@@ -1,7 +1,9 @@
 pipeline {
-	dockerfile {
-        filename 'Dockerfile'
-        dir 'exercise'
+	agent {
+		dockerfile {
+	        filename 'Dockerfile'
+	        dir 'exercise'
+		}
 	}
   	
   	options { 
