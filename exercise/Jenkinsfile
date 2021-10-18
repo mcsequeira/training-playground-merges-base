@@ -58,32 +58,48 @@ pipeline {
 					def buildConfigs = readJSON text: "$CONFIGS"
 
 					// for each repositoryConfig object call setupRemote method with defined parameters already implemented
+					// use withCredentials to get password and user from jenkins
 					buildConfigs.repositoryConfigs.each{ repoConfig -> 
 						withCredentials([[$class: 'UsernamePasswordMultiBinding', credentialsId: repoConfig.credentialId, usernameVariable: 'GIT_USERNAME', passwordVariable: 'GIT_PASSWORD']]){
 							setupRemote(repoConfig.name, repoConfig.urlWithoutProtocol, env.GIT_USERNAME, env.GIT_PASSWORD)
 						}
-						
 					}
-					// use withCredentials to get password and user from jenkins
-					}
+				}
       		}
     	}
+
     	stage('Perform Merges') {
       		steps { 
       			script {
-					def mergeReport = []
-					
-      			    // TODO use readJSON to read CONFIGS to a local variable
+      				// TODO use readJSON to read CONFIGS to a local variable
+      				def buildConfigs = readJSON text: "$CONFIGS"
+
+      				def mergeReport = []
+
 					// for each mergeConfig object assign oneToOneMapping to a variable and use convertOneToManyIntoOneToOneMapping 
 					// and convertManyToManyIntoOneToOneMapping to convert the other JSON options to oneTOone, split the strings by " " like 
 					// String1 + " " + String2 + " " + convertManyToManyIntoOneToOneMapping
-					// call performMerges method with defined parameters already implemented and assign the return value to a variable like mergesPerformed
-					// don´t forget to use replaceAll("  ", " ").trim() to avoid two spaces instead of one
-					// Then check if mergesPerformed is not null and add it to mergeReport
+      				buildConfigs.mergeConfigs.each{ mergeConfig ->
+      					def oneToOneMapping = mergeConfig.oneToOneMapping + " " + 
+      											convertOneToManyIntoOneToOneMapping(mergeConfig.targetRepository, mergeConfig.oneToManyMapping) + " " +
+      											convertManyToManyIntoOneToOneMapping(mergeConfig.sourceRepository, mergeConfig.manyToManyMapping)
+
+      					// call performMerges method with defined parameters already implemented and assign the return value to a variable like mergesPerformed
+						// don´t forget to use replaceAll("  ", " ").trim() to avoid two spaces instead of one
+      					def mergesPerformed = performMerges(mergeConfig.sourceRepository, mergeConfig.targetRepository, oneToOneMapping.replaceAll("  ", " ").trim())
+      					// Then check if mergesPerformed is not null and add it to mergeReport
+      					if (mergesPerformed != null) {
+      						mergeReport.addAll(mergesPerformed)
+      					}
+      				}
+
+      				//TODO convert mergeReport using groovy.json.JsonOutput.toJson and write mergeReport to an json file
+      				def jsonReport = readJSON text: groovy.json.JsonOutput.toJson(mergeReport)
+      				writeJSON(file: 'mergeReport.json', json: jsonOutput)
 					
-					
+					// clean workspace
 					sh "git checkout init"
-					//TODO convert mergeReport using groovy.json.JsonOutput.toJson and write mergeReport to an json file
+					
       			}
       		}
     	}
@@ -285,7 +301,6 @@ def convertOneToManyIntoOneToOneMapping(targetRepository = '', oneToManyMapping 
 			oneToOneMapping <<= newOneToOneMapping
 		}
 	}
-	
 	return oneToOneMapping.toString()
 }
 
@@ -331,13 +346,25 @@ def performMerges(sourceRepository = '', targetRepository = '', oneToOneMapping 
 	}
 	
 	//TODO trim oneToOneMapping variable by space ' ' and assign it to a variable  
-	def mergeReport = []	
-	
-	// TODO for each one to one mapping check if cointains ":", if so split it to get the source branch and the target branch
-	// Then call mergeBranches with the requested parameters
-	// Analyse mergeBranches
-	
-        
+	// main:main main:features/feature1 main:features/feature2
+	def oneToOneArray = oneToOneMapping.trim().split(' ')
+	// [main:main, main:features/feature1, main:features/feature2]
+
+	// save the merge results in this variable
+	def mergeReport = []
+
+	// TODO for each one to one mapping
+	oneToOneArray.each{ oneToOneArrayItem -> 
+										// TODO check if cointains ":", if so split it to get the source branch and the target branch
+										// Then call mergeBranches with the requested parameters
+										// main:main
+										// Analyse mergeBranches
+										if(oneToOneArrayItem.contains(":")) {
+											def item_branch_array = oneToOneArrayItem.split(":")
+											//[main, main]
+											mergeReport.add(mergeBranches(sourceRepository, item_branch_array[0], targetRepository, item_branch_array[1]))
+											}
+	}        
     return mergeReport
 }
 
