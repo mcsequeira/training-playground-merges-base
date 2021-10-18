@@ -104,10 +104,16 @@ pipeline {
       		}
     	}
   	}
-  	/*
+  	
 	post { 
-        success { 
+		always {
+			// store the merge report result
+			archiveArtifacts artifacts: 'mergeReport.json'
+		}
+        /*success { 
   			script {
+  				
+
 			//TODO read mergeReport json file
 			// call success email with report data
   			}
@@ -123,8 +129,9 @@ pipeline {
 			sh "git clean -d -fx . && git checkout -f init && git config --unset credential.helper"
 		    //TODO call maintenance email
 		}
+		*/
     }
-    */
+    
 }
 
 /*****************************************
