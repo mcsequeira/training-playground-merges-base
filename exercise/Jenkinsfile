@@ -95,7 +95,7 @@ pipeline {
 
       				//TODO convert mergeReport using groovy.json.JsonOutput.toJson and write mergeReport to an json file
       				def jsonReport = readJSON text: groovy.json.JsonOutput.toJson(mergeReport)
-      				writeJSON(file: 'mergeReport.json', json: jsonOutput)
+      				writeJSON(file: 'mergeReport.json', json: jsonReport)
 					
 					// clean workspace
 					sh "git checkout init"
