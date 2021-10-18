@@ -22,7 +22,7 @@ pipeline {
 				},																							\
 				{																							\
 					"name":"repo2",																			\
-					"urlWithoutProtocol":"github.com/mcsequeira/training-playground-merges-repo1.git",		\
+					"urlWithoutProtocol":"github.com/mcsequeira/training-playground-merges-repo2.git",		\
 					"credentialId":"CREDENTIAL_ID_NB25342"													\
 				}																							\
 			], 																								\
