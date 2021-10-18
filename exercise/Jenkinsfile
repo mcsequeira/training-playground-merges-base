@@ -28,8 +28,8 @@ pipeline {
 			], 																								\
 			"mergeConfigs":[																				\
 				{ 																							\
-					"sourceRepository":"repo2",																\
-					"targetRepository":"repo1", 															\
+					"sourceRepository":"repo1",																\
+					"targetRepository":"repo2", 															\
 					"oneToOneMapping":"main:main", 															\
 					"oneToManyMapping":"", 																	\
 					"manyToManyMapping":"" 																	\
