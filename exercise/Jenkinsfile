@@ -193,8 +193,8 @@ def sendSuccessEmail(mergeReportData = '') {
 	
 	//TODO create and fill in a variable emailBody with returned values of fillEmailRows method for errorRowsHTML, successRowsHTML and noneRowsHTML
 	def emailBody = fillEmailRows(logErrors, emailTemplate, errorRowTemplateSpecs, errorRowsHTML.toString())
-	emailBody = fillEmailRows(logSuccess, emailTemplate, successRowTemplateSpecs, successRowsHTML.toString())
-	emailBody = fillEmailRows(logNone, emailTemplate, noneRowTemplateSpecs, noneRowsHTML.toString())
+	emailBody = fillEmailRows(logSuccess, emailBody, successRowTemplateSpecs, successRowsHTML.toString())
+	emailBody = fillEmailRows(logNone, emailBody, noneRowTemplateSpecs, noneRowsHTML.toString())
 
 	emailext subject: "$SEND_SUCCESS_EMAIL_SUBJECT", 
 			 to: "$SEND_SUCCESS_EMAIL_TO",
