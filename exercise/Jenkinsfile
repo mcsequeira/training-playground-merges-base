@@ -110,26 +110,30 @@ pipeline {
 			// store the merge report result
 			archiveArtifacts artifacts: 'mergeReport.json'
 		}
-        /*success { 
+        success { 
   			script {
-  				
-
 			//TODO read mergeReport json file
+			def mergeReportData = readJSON file: 'mergeReport.json'
+
 			// call success email with report data
+			sendSuccessEmail(mergeReportData)
   			}
 			// clean server
         	sh "git clean -d -fx . && git checkout -f init && git config --unset credential.helper"
         }
         unstable {
+
         	sh "git clean -d -fx . && git checkout -f init && git config --unset credential.helper"
 			//TODO call maintenance email
+			sendMaintenanceEmail()
            
         }
 		failure {
 			sh "git clean -d -fx . && git checkout -f init && git config --unset credential.helper"
 		    //TODO call maintenance email
+		    sendMaintenanceEmail()
 		}
-		*/
+		
     }
     
 }
@@ -141,10 +145,14 @@ def sendSuccessEmail(mergeReportData = '') {
 	echo mergeReportData.toString()
 	
 	//TODO read html template file for success email with ENV variable already defined SEND_SUCCESS_EMAIL_TEMPLATE_PATH
-	
+	def emailTemplate = readFile("$SEND_SUCCESS_EMAIL_TEMPLATE_PATH")
 	
 	//TODO define and use 3 variables errorRowTemplateSpecs, successRowTemplateSpecs, noneRowTemplateSpecs to get the placeholders ROWS
 	// use findEmailRowTemplate method with parameters
+	def errorRowTemplateSpecs = findEmailRowTemplate(emailTemplate,"PLACEHOLDER_ERROR_ROW")
+	def successRowTemplateSpecs = findEmailRowTemplate(emailTemplate,"PLACEHOLDER_SUCCESS_ROW")
+	def noneRowTemplateSpecs = findEmailRowTemplate(emailTemplate,"PLACEHOLDER_NONE_ROW")
+
 	
 	boolean logErrors = errorRowTemplateSpecs != null
 	boolean logSuccess = successRowTemplateSpecs != null
@@ -163,15 +171,31 @@ def sendSuccessEmail(mergeReportData = '') {
 	
 	if (mergeReportData != null) {
 		//TODO read json configs
+		def buildConfigs = readJSON text: "$CONFIGS"
+
 		// for each mergeReportData.toArray() if
-		// rowData "result" = ERROR update errorRowsHTML with the result of fillDataInHTMLRow method wit correct parameters
-		// rowData "result" = SUCCESS update successRowsHTML with the result of fillDataInHTMLRow method wit correct parameters
-		// rowData "result" = NONE update noneRowsHTML with the result of fillDataInHTMLRow method wit correct parameters
-		
+		mergeReportData.toArray().each{ individualMerge -> 
+			// rowData "result" = ERROR update errorRowsHTML with the result of fillDataInHTMLRow method wit correct parameters
+			if(individualMerge.getString("result") == "ERROR" && logErrors) {
+				errorRowsHTML <<= fillDataInHTMLRow(errorRowTemplateSpecs.rowTemplate, individualMerge, buildConfigs.repositoryConfigs)
+			} 
+			// rowData "result" = SUCCESS update successRowsHTML with the result of fillDataInHTMLRow method wit correct parameters
+			else if(individualMerge.getString("result") == "SUCCESS" && logSuccess) {
+				successRowsHTML <<= fillDataInHTMLRow(successRowTemplateSpecs.rowTemplate, individualMerge, buildConfigs.repositoryConfigs)
+			} 
+			// rowData "result" = NONE update noneRowsHTML with the result of fillDataInHTMLRow method wit correct parameters
+			else if (individualMerge.getString("result") == "NONE" && logNone) {
+				noneRowsHTML <<= fillDataInHTMLRow(noneRowTemplateSpecs.rowTemplate, individualMerge, buildConfigs.repositoryConfigs)
+			}
+
+		}		
 	}
 	
 	//TODO create and fill in a variable emailBody with returned values of fillEmailRows method for errorRowsHTML, successRowsHTML and noneRowsHTML
-	
+	def emailBody = fillEmailRows(logErrors, emailTemplate, errorRowTemplateSpecs, errorRowsHTML.toString())
+	emailBody = fillEmailRows(logSuccess, emailTemplate, successRowTemplateSpecs, successRowsHTML.toString())
+	emailBody = fillEmailRows(logNone, emailTemplate, noneRowTemplateSpecs, noneRowsHTML.toString())
+
 	emailext subject: "$SEND_SUCCESS_EMAIL_SUBJECT", 
 			 to: "$SEND_SUCCESS_EMAIL_TO",
 			 body: emailBody
